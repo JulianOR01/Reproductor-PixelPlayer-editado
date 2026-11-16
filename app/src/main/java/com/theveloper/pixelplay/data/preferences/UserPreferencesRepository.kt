@@ -329,9 +329,9 @@ class UserPreferencesRepository @Inject constructor(
     }
 
     val isCrossfadeEnabledFlow: Flow<Boolean> =
-        pref { it[PreferencesKeys.IS_CROSSFADE_ENABLED] ?: false }
+        pref { it[PreferencesKeys.IS_CROSSFADE_ENABLED] ?: true }
 
-    suspend fun setCrossfadeEnabled(enabled: Boolean) {
+    suspend fun setCrossfadeEnabled(enabled: Boolean = true) {
         dataStore.edit { it[PreferencesKeys.IS_CROSSFADE_ENABLED] = enabled }
     }
 

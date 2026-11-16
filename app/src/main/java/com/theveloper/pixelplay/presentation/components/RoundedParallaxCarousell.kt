@@ -139,13 +139,13 @@ fun RoundedHorizontalMultiBrowseCarousel(
     val carouselWidthPx = with(density) { carouselWidth.toPx() }
 
     val maxNonFocalItems = when (carouselStyle) {
-        CarouselStyle.NO_PEEK -> 0
+        CarouselStyle.NO_PEEK, CarouselStyle.EXTENDED -> 0
         CarouselStyle.ONE_PEEK -> 1
         CarouselStyle.TWO_PEEK -> 2
         else -> 1 // Default to one peek
     }
 
-    if (carouselStyle == CarouselStyle.NO_PEEK && !suppressNoPeekSettleCorrection) {
+    if ((carouselStyle == CarouselStyle.NO_PEEK || carouselStyle == CarouselStyle.EXTENDED) && !suppressNoPeekSettleCorrection) {
         val settleEpsilon = 0.001f
         LaunchedEffect(state.pagerState) {
             snapshotFlow {
@@ -171,7 +171,7 @@ fun RoundedHorizontalMultiBrowseCarousel(
         keylineList = { _, spacingPx ->
             val itemCount = state.pagerState.pageCountState.value.invoke()
             when (carouselStyle) {
-                CarouselStyle.NO_PEEK -> multiBrowseKeylineList(
+                CarouselStyle.NO_PEEK, CarouselStyle.EXTENDED -> multiBrowseKeylineList(
                     density = density,
                     carouselMainAxisSize = carouselWidthPx,
                     preferredItemSize = carouselWidthPx,

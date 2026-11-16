@@ -34,10 +34,12 @@ fun AlbumArtImage(
     albumArtUri: String? = null,
     size: Dp,
     context: Context,
-    cornerRadius: Dp
+    cornerRadius: Dp,
+    isCircular: Boolean = false,
+    rotationAngle: Float = 0f
 ) {
     val imageProvider = bitmapData?.let { data ->
-        val cacheKey = AlbumArtBitmapCache.getKey(data)
+        val cacheKey = AlbumArtBitmapCache.getKey(data) + "_c:${isCircular}_r:${rotationAngle.toInt()}"
         var bitmap = AlbumArtBitmapCache.getBitmap(cacheKey)
 
         if (bitmap == null) {
@@ -48,7 +50,6 @@ fun AlbumArtImage(
                 BitmapFactory.decodeByteArray(data, 0, data.size, options)
 
                 var inSampleSize = 1
-                // Calculate target size in pixels
                 val targetSizePx = (size.value * context.resources.displayMetrics.density).toInt()
 
                 if (options.outHeight > targetSizePx || options.outWidth > targetSizePx) {
@@ -63,7 +64,13 @@ fun AlbumArtImage(
 
                 options.inSampleSize = inSampleSize
                 options.inJustDecodeBounds = false
-                bitmap = BitmapFactory.decodeByteArray(data, 0, data.size, options)
+                val decoded = BitmapFactory.decodeByteArray(data, 0, data.size, options)
+
+                bitmap = if (decoded != null && isCircular) {
+                    createCircularDiskBitmap(decoded, rotationAngle)
+                } else {
+                    decoded
+                }
 
                 bitmap?.let { AlbumArtBitmapCache.putBitmap(cacheKey, it) }
             } catch (e: Exception) {
@@ -73,14 +80,19 @@ fun AlbumArtImage(
         }
         bitmap?.let { ImageProvider(it) }
     } ?: albumArtUri?.let { rawUri ->
-        val cacheKey = "uri:$rawUri"
+        val cacheKey = "uri:$rawUri" + "_c:${isCircular}_r:${rotationAngle.toInt()}"
         var bitmap = AlbumArtBitmapCache.getBitmap(cacheKey)
         if (bitmap == null) {
-            bitmap = decodeAlbumArtFromUri(
+            val decoded = decodeAlbumArtFromUri(
                 context = context,
                 rawUri = rawUri,
                 requestedSize = size
             )
+            bitmap = if (decoded != null && isCircular) {
+                createCircularDiskBitmap(decoded, rotationAngle)
+            } else {
+                decoded
+            }
             bitmap?.let { AlbumArtBitmapCache.putBitmap(cacheKey, it) }
         }
         bitmap?.let { ImageProvider(it) }
@@ -119,6 +131,29 @@ fun AlbumArtImage(
             }
         }
     }
+}
+
+internal fun createCircularDiskBitmap(source: Bitmap, rotationAngle: Float = 0f): Bitmap {
+    val size = minOf(source.width, source.height)
+    val output = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+    val canvas = android.graphics.Canvas(output)
+    val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
+
+    canvas.drawARGB(0, 0, 0, 0)
+    canvas.drawCircle(size / 2f, size / 2f, size / 2f, paint)
+
+    paint.xfermode = android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.SRC_IN)
+
+    val matrix = android.graphics.Matrix()
+    val scale = size.toFloat() / maxOf(source.width, source.height)
+    matrix.postScale(scale, scale)
+    matrix.postTranslate((size - source.width * scale) / 2f, (size - source.height * scale) / 2f)
+    if (rotationAngle != 0f) {
+        matrix.postRotate(rotationAngle, size / 2f, size / 2f)
+    }
+
+    canvas.drawBitmap(source, matrix, paint)
+    return output
 }
 
 private fun decodeAlbumArtFromUri(

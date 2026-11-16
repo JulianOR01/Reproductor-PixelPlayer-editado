@@ -198,6 +198,7 @@
     <string name="settings_carousel_style_subtitle">Elige la apariencia para el carrusel de álbumes.</string>
     <string name="settings_carousel_no_peek">Sin vista lateral</string>
     <string name="settings_carousel_one_peek">Una vista lateral</string>
+    <string name="settings_carousel_extended">Arte de tapa extendido</string>
     <string name="settings_home_collage_section">Collage de inicio</string>
     <string name="settings_collage_pattern_title">Patrón del collage</string>
     <string name="settings_collage_pattern_subtitle">Elige la disposición de formas para el collage de Tu Mix.</string>

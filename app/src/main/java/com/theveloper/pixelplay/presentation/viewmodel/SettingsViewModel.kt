@@ -71,7 +71,7 @@ data class SettingsUiState(
     val pauseOnVolumeZero: Boolean = false,
     val resumeOnHeadsetReconnect: Boolean = false,
     val showQueueHistory: Boolean = true,
-    val isCrossfadeEnabled: Boolean = false,
+    val isCrossfadeEnabled: Boolean = true,
     val hiFiModeEnabled: Boolean = false,
     val hiFiModeDeviceSupported: Boolean = true,
     val crossfadeDuration: Int = 2000,

@@ -182,7 +182,9 @@ fun AlbumCarouselSection(
             }
     }
 
-    val corner = 18.dp//lerp(36.dp, 15.dp, expansionFraction.coerceIn(0f, 1f))
+    val isExtended = carouselStyle == CarouselStyle.EXTENDED
+    val corner = if (isExtended) 0.dp else 18.dp
+    val effectiveSpacing = if (isExtended) 0.dp else itemSpacing
 
     BoxWithConstraints(modifier = modifier) {
         val availableWidth = this.maxWidth
@@ -190,7 +192,7 @@ fun AlbumCarouselSection(
         RoundedHorizontalMultiBrowseCarousel(
             state = carouselState,
             modifier = Modifier.fillMaxSize(), // Fill the space provided by the parent's modifier
-            itemSpacing = itemSpacing,
+            itemSpacing = effectiveSpacing,
             itemCornerRadius = corner,
             suppressNoPeekSettleCorrection = requestedTargetIndex != null || programmaticScrollInProgress,
             carouselStyle = if (carouselState.pagerState.pageCount == 1) CarouselStyle.NO_PEEK else carouselStyle, // Handle single-item case
@@ -199,7 +201,16 @@ fun AlbumCarouselSection(
             content = { index ->
                 val song = queue[index]
                 val isFocusedItem = carouselState.pagerState.currentPage == index
-                Box(
+                val itemModifier = if (isExtended) {
+                    Modifier
+                        .fillMaxSize()
+                        .clickable(
+                            enabled = isFocusedItem && song.albumId != -1L,
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = { onAlbumClick(song) }
+                        )
+                } else {
                     Modifier
                         .fillMaxSize()
                         .aspectRatio(1f)
@@ -209,7 +220,8 @@ fun AlbumCarouselSection(
                             indication = null,
                             onClick = { onAlbumClick(song) }
                         )
-                ) { // Enforce 1:1 aspect ratio for the item itself
+                }
+                Box(itemModifier) {
                     OptimizedAlbumArt(
                         uri = song.albumArtUriString,
                         title = song.title,

@@ -115,6 +115,9 @@ import com.theveloper.pixelplay.presentation.components.snapping.SnapperLayoutIn
 import com.theveloper.pixelplay.presentation.components.snapping.rememberLazyListSnapperLayoutInfo
 import com.theveloper.pixelplay.presentation.components.snapping.rememberSnapperFlingBehavior
 import com.theveloper.pixelplay.utils.LyricsUtils
+import androidx.compose.material3.MotionScheme
+import com.theveloper.pixelplay.presentation.components.player.AnimatedPlaybackControls
+import com.theveloper.pixelplay.presentation.components.player.BottomToggleRow
 import com.theveloper.pixelplay.presentation.components.subcomps.LyricsMoreBottomSheet
 import android.content.BroadcastReceiver
 import android.content.Intent
@@ -138,6 +141,7 @@ import androidx.compose.ui.text.style.TextGeometricTransform
 import androidx.compose.ui.text.style.TextOverflow
 import com.theveloper.pixelplay.presentation.components.subcomps.PlayingEqIcon
 import com.theveloper.pixelplay.utils.MultiLangRomanizer
+import com.theveloper.pixelplay.utils.formatDuration
 
 internal data class LyricsSheetColors(
     val container: Color,
@@ -670,11 +674,83 @@ fun LyricsSheet(
                     }
                 )
             },
-        containerColor = containerColor,
-        contentColor = contentColor,
-        // Removed TopBar and FAB
+        containerColor = Color.Transparent,
+        contentColor = Color.White,
     ) { paddingValues ->
         Box(modifier = Modifier.fillMaxSize()) {
+            // Blurred Album Cover Background (Image 2 design)
+            if (currentSong?.albumArtUriString != null) {
+                SmartImage(
+                    model = currentSong?.albumArtUriString,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .blur(if (disableBlurAllOver) 0.dp else 50.dp),
+                    contentScale = ContentScale.Crop
+                )
+            }
+
+            // Tinted Scrim Overlay for crisp text contrast
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(containerColor.copy(alpha = 0.72f))
+            )
+
+            // Top Header Bar (Image 2)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .statusBarsPadding()
+                    .padding(horizontal = 20.dp, vertical = 12.dp)
+                    .zIndex(10f),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Top-Left: Circular collapse button
+                Box(
+                    modifier = Modifier
+                        .size(42.dp)
+                        .clip(CircleShape)
+                        .background(Color.White.copy(alpha = 0.22f))
+                        .clickable { onBackClick() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.rounded_keyboard_arrow_down_24),
+                        contentDescription = stringResource(R.string.player_cd_collapse),
+                        tint = Color.White
+                    )
+                }
+
+                // Center: "Lyrics" title
+                Text(
+                    text = stringResource(R.string.lyrics_title),
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = GoogleSansRounded
+                    ),
+                    color = Color.White
+                )
+
+                // Top-Right: Circular cast button
+                Box(
+                    modifier = Modifier
+                        .size(42.dp)
+                        .clip(CircleShape)
+                        .background(Color.White.copy(alpha = 0.22f))
+                        .clickable { showMoreSheet = true },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.rounded_cast_24),
+                        contentDescription = stringResource(R.string.player_cd_cast),
+                        tint = Color.White,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+            }
+
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -704,61 +780,28 @@ fun LyricsSheet(
                     .weight(1f)
                     .fillMaxWidth()
             ) {
-                // Track Info Header (Fixed at top)
-                AnimatedContent(
-                    targetState = currentSong,
-                    transitionSpec = {
-                        (fadeIn(animationSpec = tween(300)) + 
-                         scaleIn(initialScale = 0.9f, animationSpec = tween(300)))
-                        .togetherWith(fadeOut(animationSpec = tween(300)))
-                    },
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .zIndex(2f)
-                        .wrapContentWidth(),
-                    label = "headerAnimation"
-                ) { song ->
-                    LyricsTrackInfo(
-                        song = song,
-                        modifier = Modifier
-                            .align(Alignment.TopStart)
-                            .padding(
-                                top = 4.dp, bottom = 24.dp, start = 18.dp, end = 18.dp
-                            )
-                            .background(
-                                color = backgroundColor,
-                                shape = CircleShape
-                            )
-                            .wrapContentWidth()
-                            .animateContentSize(), // Animate width changes
-                        backgroundColor = backgroundColor, // Distinct solid background
-                        contentColor = onBackgroundColor,
-                        isPlaying = isPlaying
-                    )
-                }
-
                 when (showSyncedLyrics) {
                     null -> {
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(top = 110.dp, bottom = 24.dp, start = 24.dp, end = 24.dp)
+                            contentPadding = PaddingValues(top = 90.dp, bottom = 300.dp, start = 24.dp, end = 24.dp)
                         ) {
                             item(key = "loader_or_empty") {
                                 Box(
-                                    modifier = Modifier
-                                        .fillParentMaxSize(),
+                                    modifier = Modifier.fillParentMaxSize(),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     if (isLoadingLyrics) {
                                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                             Text(
                                                 text = stringResource(R.string.lyrics_loading),
-                                                style = MaterialTheme.typography.titleMedium
+                                                style = MaterialTheme.typography.titleMedium,
+                                                color = Color.White
                                             )
                                             Spacer(modifier = Modifier.height(8.dp))
                                             LinearWavyProgressIndicator(
-                                                trackColor = accentColor.copy(alpha = 0.4f),
-                                                color = accentColor,
+                                                trackColor = Color.White.copy(alpha = 0.4f),
+                                                color = Color.White,
                                                 modifier = Modifier.width(100.dp)
                                             )
                                         }
@@ -771,17 +814,15 @@ fun LyricsSheet(
                     true -> {
                         lyrics?.synced?.let { synced ->
                             SyncedLyricsList(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(horizontal = 24.dp),
-                                contentPadding = PaddingValues(top = 130.dp, bottom = 100.dp),
+                                modifier = Modifier.fillMaxSize(),
+                                contentPadding = PaddingValues(top = 90.dp, bottom = 300.dp, start = 24.dp, end = 24.dp),
                                 lines = synced,
                                 listState = syncedListState,
                                 playbackPositionFlow = playbackPositionFlow,
                                 lyricsSyncOffset = lyricsSyncOffset,
                                 positionOverrideMs = previewSeekPositionMs,
-                                accentColor = lyricHighlightColor,
-                                textStyle = scaledTextStyle,
+                                accentColor = Color.White,
+                                textStyle = scaledTextStyle.copy(color = Color.White),
                                 onLineClick = { syncedLine -> 
                                     onSeekTo(
                                         resolveSeekPositionMs(
@@ -808,7 +849,7 @@ fun LyricsSheet(
                                                 providerText = stringResource(R.string.lyrics_provided_by),
                                                 uri = stringResource(R.string.lyrics_lrclib_uri),
                                                 textAlign = TextAlign.Center,
-                                                accentColor = lyricHighlightColor,
+                                                accentColor = Color.White,
                                                 modifier = Modifier
                                                     .fillMaxWidth()
                                                     .padding(vertical = 16.dp)
@@ -828,8 +869,8 @@ fun LyricsSheet(
                                 contentPadding = PaddingValues(
                                     start = 24.dp,
                                     end = 24.dp,
-                                    top = 130.dp,
-                                    bottom = 24.dp
+                                    top = 90.dp,
+                                    bottom = 300.dp
                                 )
                             ) {
                                 itemsIndexed(
@@ -838,7 +879,7 @@ fun LyricsSheet(
                                 ) { _, line ->
                                     PlainLyricsLine(
                                         line = line,
-                                        style = lyricsTextStyle,
+                                        style = lyricsTextStyle.copy(color = Color.White),
                                         lyricsAlignment = lyricsAlignment,
                                         showTranslation = if (hasTranslatedLyrics) showLyricsTranslation else true,
                                         showRomanization = if (hasRomanizedLyrics) showLyricsRomanization else true,
@@ -855,11 +896,11 @@ fun LyricsSheet(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(130.dp)
+                        .height(110.dp)
                         .align(Alignment.TopCenter)
                         .background(
                             brush = Brush.verticalGradient(
-                                colors = listOf(containerColor, Color.Transparent)
+                                colors = listOf(containerColor.copy(alpha = 0.85f), Color.Transparent)
                             )
                         )
                 )
@@ -868,141 +909,176 @@ fun LyricsSheet(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(80.dp)
+                        .height(200.dp)
                         .align(Alignment.BottomCenter)
                         .background(
                             brush = Brush.verticalGradient(
-                                colors = listOf(Color.Transparent, containerColor)
+                                colors = listOf(Color.Transparent, containerColor.copy(alpha = 0.95f))
                             )
                         )
                 )
             }
+        }
 
-            // Controls Section (Auto-hide in immersive mode)
-            AnimatedVisibility(
-                visible = !immersiveMode,
-                enter = expandVertically(expandFrom = Alignment.Top) + fadeIn(),
-                exit = shrinkVertically(shrinkTowards = Alignment.Top) + fadeOut()
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(containerColor)
-                        .padding(bottom = paddingValues.calculateBottomPadding() + 10.dp, end = 16.dp, start = 16.dp)
-                        .pointerInput(Unit) {
-                            awaitPointerEventScope {
-                                while (true) {
-                                    val event = awaitPointerEvent()
-                                    // Reset timer on any touch down or move in this area
-                                    if (event.changes.any { it.pressed }) {
-                                         resetImmersiveTimer()
-                                    }
-                                }
-                            }
-                        }
+        // Controls Section (Gradient Fade Transition - No hard capsule line)
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.BottomCenter
+        ) {
+                AnimatedVisibility(
+                    visible = !immersiveMode,
+                    enter = expandVertically(expandFrom = Alignment.Top) + fadeIn(),
+                    exit = shrinkVertically(shrinkTowards = Alignment.Top) + fadeOut()
                 ) {
-                                AnimatedVisibility(
-                    visible = showSyncedLyrics == true && lyrics?.synced != null && showSyncControls,
-                    enter = expandVertically() + fadeIn(),
-                    exit = shrinkVertically() + fadeOut()
-                ) {
-                    LyricsSyncControls(
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(bottom = 8.dp),
-                        offsetMillis = lyricsSyncOffset,
-                        onOffsetChange = onLyricsSyncOffsetChange,
-                        backgroundColor = backgroundColor,
-                        accentColor = sheetColors.syncButtonContainer,
-                        onAccentColor = sheetColors.syncButtonContent,
-                        onBackgroundColor = onBackgroundColor
-                    )
-                }
-
-                // Playback Controls Row
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 0.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    // Play/Pause Button (Smaller)
-                    val playPauseCornerRadius by animateDpAsState(
-                        targetValue = if (isPlaying) 18.dp else 50.dp,
-                        animationSpec = spring(stiffness = Spring.StiffnessLow),
-                        label = "playPauseShape"
-                    )
-
-                    Box(
-                        modifier = Modifier
-                            .size(78.dp)
-                            .clip(RoundedCornerShape(playPauseCornerRadius))
-                            .background(playPauseColor)
-                            .clickable {
-                                hapticFeedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                onPlayPause()
+                            .background(
+                                brush = Brush.verticalGradient(
+                                    colors = listOf(
+                                        Color.Transparent,
+                                        containerColor.copy(alpha = 0.70f),
+                                        containerColor.copy(alpha = 0.95f),
+                                        containerColor
+                                    )
+                                )
+                            )
+                            .padding(
+                                top = 24.dp,
+                                bottom = paddingValues.calculateBottomPadding() + 10.dp,
+                                start = 16.dp,
+                                end = 16.dp
+                            )
+                            .pointerInput(Unit) {
+                                awaitPointerEventScope {
+                                    while (true) {
+                                        val event = awaitPointerEvent()
+                                        if (event.changes.any { it.pressed }) {
+                                             resetImmersiveTimer()
+                                        }
+                                    }
+                                }
                             },
-                        contentAlignment = Alignment.Center
+                        verticalArrangement = Arrangement.spacedBy(14.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        AnimatedContent(
-                            targetState = isPlaying,
-                            label = "playPauseIconAnimation"
-                        ) { playing ->
-                            if (playing) {
-                                Icon(
-                                    modifier = Modifier.size(32.dp),
-                                    imageVector = Icons.Rounded.Pause,
-                                    contentDescription = "Pause",
-                                    tint = onPlayPauseColor
-                                )
-                            } else {
-                                Icon(
-                                    modifier = Modifier.size(32.dp),
-                                    imageVector = Icons.Rounded.PlayArrow,
-                                    contentDescription = stringResource(R.string.common_play),
-                                    tint = onPlayPauseColor
-                                )
-                            }
+                    AnimatedVisibility(
+                        visible = showSyncedLyrics == true && lyrics?.synced != null && showSyncControls,
+                        enter = expandVertically() + fadeIn(),
+                        exit = shrinkVertically() + fadeOut()
+                    ) {
+                        LyricsSyncControls(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 8.dp),
+                            offsetMillis = lyricsSyncOffset,
+                            onOffsetChange = onLyricsSyncOffsetChange,
+                            backgroundColor = Color.White.copy(alpha = 0.18f),
+                            accentColor = Color.White,
+                            onAccentColor = Color.Black,
+                            onBackgroundColor = Color.White
+                        )
+                    }
+
+                    // Progress Bar & Timestamps
+                    val playbackPosition by playbackPositionFlow.collectAsStateWithLifecycle()
+                    val totalDuration = stablePlayerState.totalDuration
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        LyricsPlaybackSeekBar(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(40.dp),
+                            playbackPositionFlow = playbackPositionFlow,
+                            backgroundColor = Color.Transparent,
+                            onBackgroundColor = Color.White,
+                            accentColor = Color.White,
+                            totalDuration = totalDuration,
+                            onSeekTo = onSeekTo,
+                            onSeekPreviewChange = { previewSeekPositionMs = it },
+                            isPlaying = isPlaying
+                        )
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(start = 4.dp, end = 4.dp, top = 2.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = formatDuration(playbackPosition),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color.White.copy(alpha = 0.75f)
+                            )
+                            Text(
+                                text = formatDuration(totalDuration),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color.White.copy(alpha = 0.75f)
+                            )
                         }
                     }
 
-                    // Progress Bar
-                    LyricsPlaybackSeekBar(
+                    // C. Expressive Playback Controls (3 Stadium Pills)
+                    val motionScheme = remember { MotionScheme.expressive() }
+                    val controlSpatialSpec = remember { motionScheme.fastSpatialSpec<Float>() }
+
+                    AnimatedPlaybackControls(
                         modifier = Modifier
-                            .weight(1f)
-                            .height(50.dp),
-                        playbackPositionFlow = playbackPositionFlow,
-                        backgroundColor = backgroundColor,
-                        onBackgroundColor = onBackgroundColor,
-                        accentColor = accentColor,
-                        totalDuration = stablePlayerState.totalDuration,
-                        onSeekTo = onSeekTo,
-                        onSeekPreviewChange = { previewSeekPositionMs = it },
-                        isPlaying = isPlaying
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 2.dp),
+                        isPlayingProvider = { isPlaying },
+                        onPrevious = onPrev,
+                        onPlayPause = onPlayPause,
+                        onNext = onNext,
+                        height = 76.dp,
+                        pressAnimationSpec = controlSpatialSpec,
+                        releaseDelay = 220L,
+                        colorOtherButtons = Color.White.copy(alpha = 0.28f),
+                        colorPlayPause = Color.White,
+                        tintPlayPauseIcon = Color.Black,
+                        tintOtherIcons = Color.White,
+                        colorPreviousButton = Color.White.copy(alpha = 0.28f),
+                        colorNextButton = Color.White.copy(alpha = 0.28f),
+                        tintPreviousIcon = Color.White,
+                        tintNextIcon = Color.White
+                    )
+
+                    // D. Bottom Toggle Row (Shuffle, Repeat, Favorite in Segmented Pill)
+                    BottomToggleRow(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 60.dp, max = 76.dp)
+                            .padding(horizontal = 16.dp, vertical = 0.dp),
+                        isShuffleEnabled = isShuffleEnabled,
+                        repeatMode = repeatMode,
+                        isFavoriteProvider = isFavoriteProvider,
+                        onShuffleToggle = onShuffleToggle,
+                        onRepeatToggle = onRepeatToggle,
+                        onFavoriteToggle = onFavoriteToggle,
+                        containerColor = Color.White.copy(alpha = 0.18f),
+                        inactiveColor = Color.Transparent,
+                        inactiveContentColor = Color.White.copy(alpha = 0.7f),
+                        activeColorMain = Color.White,
+                        onActiveColorMain = Color.Black,
+                        activeColorSecondary = Color.White,
+                        onActiveColorSecondary = Color.Black,
+                        activeColorTertiary = Color.White,
+                        onActiveColorTertiary = Color.Black
+                    )
+
+                    // E. Bottom Floating Toolbar
+                    LyricsFloatingToolbar(
+                        modifier = Modifier.padding(horizontal = 0.dp),
+                        showSyncedLyrics = showSyncedLyrics,
+                        hasSyncedLyrics = hasSyncedLyrics,
+                        onShowSyncedLyricsChange = { showSyncedLyrics = it },
+                        onNavigateBack = { onBackClick() },
+                        onMoreClick = { showMoreSheet = true },
+                        backgroundColor = Color.White.copy(alpha = 0.2f),
+                        onBackgroundColor = Color.White,
+                        accentColor = Color.White,
+                        onAccentColor = Color.Black,
+                        backProgressProvider = { backProgressProvider.value }
                     )
                 }
-                
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Floating Toolbar
-                LyricsFloatingToolbar(
-                    modifier = Modifier.padding(horizontal = 0.dp),
-                    showSyncedLyrics = showSyncedLyrics,
-                    hasSyncedLyrics = hasSyncedLyrics,
-                    onShowSyncedLyricsChange = { showSyncedLyrics = it },
-                    onNavigateBack = {
-                        onBackClick()
-                    },
-                    onMoreClick = { showMoreSheet = true },
-                    backgroundColor = backgroundColor,
-                    onBackgroundColor = onBackgroundColor,
-                    accentColor = accentColor,
-                    onAccentColor = onAccentColor,
-                    // Pass progress so the back button animates with the gesture (draw-phase).
-                    backProgressProvider = { backProgressProvider.value },
-                )
-             }
             }
         }
 
@@ -1433,80 +1509,84 @@ fun LyricLineRow(
         label = "lineColor"
     )
 
-    // Animated mode: fisheye scaling + alpha based on distance from current line
-    val targetScale = if (useAnimatedLyrics) when (distanceFromCurrent) {
-        0 -> if (immersiveMode) 1.02f else 1.1f; 1 -> 0.95f; else -> 0.85f
-    } else 1f
-    val targetPadding = if (useAnimatedLyrics) when (distanceFromCurrent) {
-        0 -> 32.dp; 1 -> 16.dp; else -> 8.dp
-    } else 12.dp
-    val targetAlpha = if (useAnimatedLyrics) when (distanceFromCurrent) {
-        0 -> 1.0f; 1 -> 0.6f; else -> 0.3f
-    } else 1f
+    // Fisheye scaling + alpha + blur based on distance from current line
+    val targetScale = when (distanceFromCurrent) {
+        0 -> if (immersiveMode) 1.05f else 1.12f
+        1 -> 0.95f
+        else -> 0.86f
+    }
+    val targetPadding = when (distanceFromCurrent) {
+        0 -> 24.dp
+        1 -> 14.dp
+        else -> 8.dp
+    }
+    val targetAlpha = when (distanceFromCurrent) {
+        0 -> 1.0f
+        1 -> 0.55f
+        else -> 0.38f
+    }
 
     val scale by animateFloatAsState(
         targetValue = targetScale,
-        animationSpec = if (useAnimatedLyrics) spring(
+        animationSpec = spring(
             stiffness = Spring.StiffnessVeryLow,
             dampingRatio = Spring.DampingRatioMediumBouncy
-        ) else tween(durationMillis = 200),
+        ),
         label = "lineScale"
     )
     val verticalPadding by animateDpAsState(
         targetValue = targetPadding,
-        animationSpec = if (useAnimatedLyrics) spring(
+        animationSpec = spring(
             stiffness = Spring.StiffnessVeryLow,
             dampingRatio = Spring.DampingRatioMediumBouncy
-        ) else tween(durationMillis = 200),
+        ),
         label = "linePadding"
     )
     val alpha by animateFloatAsState(
         targetValue = targetAlpha,
-        animationSpec = if (useAnimatedLyrics) spring(
+        animationSpec = spring(
             stiffness = Spring.StiffnessLow,
             dampingRatio = Spring.DampingRatioNoBouncy
-        ) else tween(durationMillis = 200),
+        ),
         label = "lineAlpha"
     )
 
-    // Blur Effect
-    val targetBlur = if (useAnimatedLyrics && animatedLyricsBlurEnabled && distanceFromCurrent > 0) {
-        (distanceFromCurrent * animatedLyricsBlurStrength).coerceAtMost(10f).dp
+    // Blur Effect for non-active lines (Image 3)
+    val targetBlur = if (animatedLyricsBlurEnabled && distanceFromCurrent > 0) {
+        (distanceFromCurrent * 2.5f).coerceIn(2.5f, 7f).dp
     } else 0.dp
 
     val blurRadius by animateDpAsState(
         targetValue = targetBlur,
-        animationSpec = if (useAnimatedLyrics) tween(durationMillis = 400) else tween(durationMillis = 200),
+        animationSpec = tween(durationMillis = 300),
         label = "lineBlur"
     )
 
-    // Animated mode: apply graphicsLayer for scale/alpha transforms
-    val baseModifier = if (useAnimatedLyrics && !immersiveMode) {
+    // Apply graphicsLayer for scale/alpha transforms and blur
+    val baseModifier = if (!immersiveMode) {
         when (lyricsAlignment) {
-            "center" -> modifier.padding(horizontal = 36.dp)
-            "right" -> modifier.padding(start = 36.dp)
-            else -> modifier.padding(end = 36.dp)
+            "center" -> modifier.padding(horizontal = 24.dp)
+            "right" -> modifier.padding(start = 24.dp)
+            else -> modifier.padding(end = 24.dp)
         }
     } else {
         modifier
     }
-    val animatedModifier = if (useAnimatedLyrics) {
-        baseModifier
-            .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-                this.alpha = alpha
-                transformOrigin = TransformOrigin(
-                    pivotFractionX = when (lyricsAlignment) {
-                        "center" -> 0.5f
-                        "right" -> 1f
-                        else -> 0f
-                    },
-                    pivotFractionY = 0.5f
-                )
-            }
-            .then(if (blurRadius > 0.dp) Modifier.blur(blurRadius) else Modifier)
-    } else baseModifier
+    val animatedModifier = baseModifier
+        .graphicsLayer {
+            scaleX = scale
+            scaleY = scale
+            this.alpha = alpha
+            transformOrigin = TransformOrigin(
+                pivotFractionX = when (lyricsAlignment) {
+                    "center" -> 0.5f
+                    "right" -> 1f
+                    else -> 0f
+                },
+                pivotFractionY = 0.5f
+            )
+        }
+        .then(if (blurRadius > 0.dp) Modifier.blur(blurRadius) else Modifier)
 
     // Roman or Translate Logic
     val translationText = line.translation

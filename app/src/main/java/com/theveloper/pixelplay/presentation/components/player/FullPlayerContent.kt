@@ -80,7 +80,9 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -101,6 +103,7 @@ import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.foundation.shape.CircleShape
@@ -586,7 +589,8 @@ fun FullPlayerContent(
             chipContentColor = playerAccentColor,
             onQueueClick = onSongMetadataQueueClick,
             onArtistClick = onSongMetadataArtistClick,
-            isPlayingProvider = isPlayingProvider
+            isPlayingProvider = isPlayingProvider,
+            isCentered = carouselStyle == CarouselStyle.EXTENDED
         )
     }
 
@@ -922,6 +926,8 @@ fun FullPlayerContent(
             } else {
                 FullPlayerPortraitContent(
                     paddingValues = paddingValues,
+                    isExtendedArtwork = carouselStyle == CarouselStyle.EXTENDED,
+                    onLyricsClick = onLyricsClick,
                     albumCoverSection = albumCoverSection,
                     songMetadataSection = portraitSongMetadataSection,
                     playerProgressSection = playerProgressSection,
@@ -932,14 +938,19 @@ fun FullPlayerContent(
     }
     AnimatedVisibility(
         visible = showLyricsSheet,
-        enter = slideInVertically(
-            initialOffsetY = { it / 5 },
+        enter = scaleIn(
+            initialScale = 0.08f,
+            transformOrigin = TransformOrigin(0.88f, 0.72f),
+            animationSpec = spring(
+                stiffness = Spring.StiffnessMediumLow,
+                dampingRatio = Spring.DampingRatioLowBouncy
+            )
+        ) + fadeIn(animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing)),
+        exit = scaleOut(
+            targetScale = 0.08f,
+            transformOrigin = TransformOrigin(0.88f, 0.72f),
             animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing)
-        ) + fadeIn(animationSpec = tween(durationMillis = 160)),
-        exit = slideOutVertically(
-            targetOffsetY = { it / 6 },
-            animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing)
-        ) + fadeOut(animationSpec = tween(durationMillis = 120))
+        ) + fadeOut(animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing))
     ) {
         LyricsSheet(
             stablePlayerStateFlow = playerViewModel.stablePlayerState,
@@ -1036,12 +1047,13 @@ private fun FullPlayerAlbumCoverSection(
     BoxWithConstraints(
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp)
+            .padding(vertical = if (carouselStyle == CarouselStyle.EXTENDED) 0.dp else 8.dp)
     ) {
         val carouselHeight = when (carouselStyle) {
             CarouselStyle.NO_PEEK -> maxWidth
             CarouselStyle.ONE_PEEK -> maxWidth * 0.8f
             CarouselStyle.TWO_PEEK -> maxWidth * 0.6f
+            CarouselStyle.EXTENDED -> maxWidth * 1.35f
             else -> maxWidth * 0.8f
         }
 
@@ -1320,7 +1332,8 @@ private fun FullPlayerSongMetadataSection(
     chipContentColor: Color,
     onQueueClick: () -> Unit,
     onArtistClick: () -> Unit,
-    isPlayingProvider: () -> Boolean = { true }
+    isPlayingProvider: () -> Boolean = { true },
+    isCentered: Boolean = false
 ) {
     val shouldDelay = loadingTweaks.delayAll || loadingTweaks.delaySongMetadata
 
@@ -1365,7 +1378,8 @@ private fun FullPlayerSongMetadataSection(
             showQueueButton = isLandscape,
             onClickQueue = onQueueClick,
             onClickArtist = onArtistClick,
-            isPlayingProvider = isPlayingProvider
+            isPlayingProvider = isPlayingProvider,
+            isCentered = isCentered
         )
     }
 }
@@ -1373,35 +1387,139 @@ private fun FullPlayerSongMetadataSection(
 @Composable
 private fun FullPlayerPortraitContent(
     paddingValues: PaddingValues,
+    isExtendedArtwork: Boolean = false,
+    onLyricsClick: () -> Unit = {},
     albumCoverSection: @Composable (Modifier) -> Unit,
     songMetadataSection: @Composable () -> Unit,
     playerProgressSection: @Composable () -> Unit,
     controlsSection: @Composable () -> Unit
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(paddingValues)
-            .padding(
-                horizontal = 24.dp,
-                vertical = 0.dp
-            ),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.SpaceAround
-    ) {
-        albumCoverSection(Modifier)
+    val playerAccentColor = LocalMaterialTheme.current.primary
+    val playerOnAccentColor = LocalMaterialTheme.current.onPrimary
 
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+    if (isExtendedArtwork) {
+        val themeBgColor = LocalMaterialTheme.current.primaryContainer
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(bottom = paddingValues.calculateBottomPadding())
         ) {
-            Box(Modifier.align(Alignment.Start)) {
-                songMetadataSection()
-            }
-            playerProgressSection()
-        }
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.TopCenter)
+            ) {
+                albumCoverSection(Modifier.fillMaxWidth())
 
-        controlsSection()
+                // 1. TOP Gradient Scrim Overlay (fades cover top smoothly into theme background color)
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(160.dp)
+                        .align(Alignment.TopCenter)
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    themeBgColor.copy(alpha = 0.95f),
+                                    themeBgColor.copy(alpha = 0.5f),
+                                    Color.Transparent
+                                )
+                            )
+                        )
+                )
+
+                // 2. BOTTOM Gradient Scrim Overlay (fades cover bottom smoothly into theme background color)
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(240.dp)
+                        .align(Alignment.BottomCenter)
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    Color.Transparent,
+                                    themeBgColor.copy(alpha = 0.55f),
+                                    themeBgColor
+                                )
+                            )
+                        )
+                )
+            }
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.BottomCenter)
+                    .padding(horizontal = 24.dp, vertical = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Floating Lyrics Button placed above metadata on the right side
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.CenterEnd
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(height = 38.dp, width = 46.dp)
+                            .clip(
+                                RoundedCornerShape(
+                                    topStart = 20.dp,
+                                    topEnd = 20.dp,
+                                    bottomStart = 20.dp,
+                                    bottomEnd = 20.dp
+                                )
+                            )
+                            .background(playerOnAccentColor.copy(alpha = 0.75f))
+                            .clickable { onLyricsClick() },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.rounded_lyrics_24),
+                            contentDescription = stringResource(R.string.common_lyrics),
+                            tint = playerAccentColor,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    songMetadataSection()
+                }
+                playerProgressSection()
+                controlsSection()
+            }
+        }
+    } else {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .padding(
+                    horizontal = 24.dp,
+                    vertical = 0.dp
+                ),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.SpaceAround
+        ) {
+            albumCoverSection(Modifier)
+
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Box(Modifier.align(Alignment.Start)) {
+                    songMetadataSection()
+                }
+                playerProgressSection()
+            }
+
+            controlsSection()
+        }
     }
 }
 
@@ -1465,14 +1583,15 @@ private fun SongMetadataDisplaySection(
     onClickQueue: () -> Unit,
     onClickArtist: () -> Unit,
     modifier: Modifier = Modifier,
-    isPlayingProvider: () -> Boolean = { true }
+    isPlayingProvider: () -> Boolean = { true },
+    isCentered: Boolean = false
 ) {
     Row(
         modifier
             .fillMaxWidth()
             .heightIn(min = 70.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+        horizontalArrangement = if (isCentered) Arrangement.Center else Arrangement.spacedBy(12.dp)
     ) {
         song?.let { currentSong ->
             PlayerSongInfo(
@@ -1486,10 +1605,9 @@ private fun SongMetadataDisplaySection(
                 gradientEdgeColor = gradientEdgeColor,
                 playerViewModel = playerViewModel,
                 onClickArtist = onClickArtist,
-                modifier = Modifier
-                    .weight(1f)
-                    .align(Alignment.CenterVertically),
-                isPlayingProvider = isPlayingProvider
+                modifier = if (isCentered) Modifier.fillMaxWidth().align(Alignment.CenterVertically) else Modifier.weight(1f).align(Alignment.CenterVertically),
+                isPlayingProvider = isPlayingProvider,
+                isCentered = isCentered
             )
         }
         
@@ -2142,7 +2260,8 @@ private fun PlayerSongInfo(
     playerViewModel: PlayerViewModel,
     onClickArtist: () -> Unit,
     modifier: Modifier = Modifier,
-    isPlayingProvider: () -> Boolean = { true }
+    isPlayingProvider: () -> Boolean = { true },
+    isCentered: Boolean = false
 ) {
     val coroutineScope = rememberCoroutineScope()
     var isNavigatingToArtist by remember { mutableStateOf(false) }
@@ -2152,22 +2271,24 @@ private fun PlayerSongInfo(
     val titleStyle = MaterialTheme.typography.headlineSmall.copy(
         fontWeight = FontWeight.Bold,
         fontFamily = GoogleSansRounded,
-        color = textColor
+        color = textColor,
+        textAlign = if (isCentered) TextAlign.Center else TextAlign.Start
     )
 
     val artistStyle = MaterialTheme.typography.titleMedium.copy(
         letterSpacing = 0.sp,
-        color = artistTextColor
+        color = artistTextColor,
+        textAlign = if (isCentered) TextAlign.Center else TextAlign.Start
     )
 
     Column(
-        horizontalAlignment = Alignment.Start,
-            modifier = modifier
-                .padding(vertical = 4.dp)
-                .fillMaxWidth()
+        horizontalAlignment = if (isCentered) Alignment.CenterHorizontally else Alignment.Start,
+        modifier = modifier
+            .padding(vertical = 4.dp)
+            .fillMaxWidth()
             .graphicsLayer {
                 val fraction = expansionFractionProvider()
-                alpha = fraction // Or apply specific fade logic if desired
+                alpha = fraction
                 translationY = (1f - fraction) * 24f
             }
     ) {

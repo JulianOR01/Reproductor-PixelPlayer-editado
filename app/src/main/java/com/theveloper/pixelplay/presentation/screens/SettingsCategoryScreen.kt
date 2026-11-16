@@ -617,7 +617,8 @@ fun SettingsCategoryScreen(
                                     description = stringResource(R.string.settings_carousel_style_subtitle),
                                     options = mapOf(
                                         CarouselStyle.NO_PEEK to stringResource(R.string.settings_carousel_no_peek),
-                                        CarouselStyle.ONE_PEEK to stringResource(R.string.settings_carousel_one_peek)
+                                        CarouselStyle.ONE_PEEK to stringResource(R.string.settings_carousel_one_peek),
+                                        CarouselStyle.EXTENDED to stringResource(R.string.settings_carousel_extended)
                                     ),
                                     selectedKey = uiState.carouselStyle,
                                     onSelectionChanged = { settingsViewModel.setCarouselStyle(it) },
@@ -827,24 +828,14 @@ fun SettingsCategoryScreen(
                             }
 
                             SettingsSubsection(title = stringResource(R.string.settings_queue_transitions_section)) {
-                                ThemeSelectorItem(
-                                    label = stringResource(R.string.settings_crossfade_title),
-                                    description = stringResource(R.string.settings_crossfade_subtitle),
-                                    options = mapOf("true" to stringResource(R.string.settings_label_enabled), "false" to stringResource(R.string.settings_label_disabled)),
-                                    selectedKey = if (uiState.isCrossfadeEnabled) "true" else "false",
-                                    onSelectionChanged = { settingsViewModel.setCrossfadeEnabled(it.toBoolean()) },
-                                    leadingIcon = { Icon(painterResource(R.drawable.rounded_align_justify_space_even_24), null, tint = MaterialTheme.colorScheme.secondary) }
+                                SliderSettingsItem(
+                                    label = stringResource(R.string.settings_crossfade_duration_title),
+                                    value = uiState.crossfadeDuration.toFloat(),
+                                    valueRange = 1000f..12000f,
+                                    steps = 10,
+                                    onValueChange = { settingsViewModel.setCrossfadeDuration(it.toInt()) },
+                                    valueText = { value -> "${(value / 1000).toInt()}s" }
                                 )
-                                if (uiState.isCrossfadeEnabled) {
-                                    SliderSettingsItem(
-                                        label = stringResource(R.string.settings_crossfade_duration_title),
-                                        value = uiState.crossfadeDuration.toFloat(),
-                                        valueRange = 1000f..12000f,
-                                        steps= 10,
-                                        onValueChange = { settingsViewModel.setCrossfadeDuration(it.toInt()) },
-                                        valueText = { value -> "${(value / 1000).toInt()}s" }
-                                    )
-                                }
                                 SwitchSettingItem(
                                     title = stringResource(R.string.settings_hifi_mode_title),
                                     subtitle = if (uiState.hiFiModeDeviceSupported)
@@ -1269,7 +1260,7 @@ fun SettingsCategoryScreen(
                                                 .fillMaxWidth()
                                                 .padding(top = 8.dp, bottom = 8.dp)
                                         ) {
-                                            val dateFormat = SimpleDateFormat("MMMM d, yyyy", Locale.getDefault())
+                                            val dateFormat = remember { SimpleDateFormat("MMMM d, yyyy", Locale.getDefault()) }
                                             val groupedUsage = recentAiUsage.groupBy { 
                                                 dateFormat.format(Date(it.timestamp)) 
                                             }

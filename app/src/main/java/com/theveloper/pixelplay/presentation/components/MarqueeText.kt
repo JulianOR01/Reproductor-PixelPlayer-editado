@@ -58,7 +58,7 @@ fun AutoScrollingTextOnDemand(
         AutoScrollingText(
             text = text,
             style = style,
-            textAlign = TextAlign.Start,
+            textAlign = style.textAlign,
             gradientEdgeColor = gradientEdgeColor,
             modifier = modifier,
             canScroll = canScroll && canStart
