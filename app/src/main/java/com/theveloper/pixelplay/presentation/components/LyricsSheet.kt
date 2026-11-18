@@ -626,7 +626,6 @@ fun LyricsSheet(
                 scaleY = scale
                 translationY = lerp(0f, size.height * 0.08f, p)
             }
-            .clip(RoundedCornerShape(32.dp))
             .pointerInput(Unit) {
                 detectDragGestures(
                     onDragStart = {
@@ -676,6 +675,7 @@ fun LyricsSheet(
             },
         containerColor = Color.Transparent,
         contentColor = Color.White,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
     ) { paddingValues ->
         Box(modifier = Modifier.fillMaxSize()) {
             // Blurred Album Cover Background (Image 2 design)
@@ -1499,7 +1499,7 @@ fun LyricLineRow(
     val isCurrentLine by remember(position, line.time, lineEndTime) {
         derivedStateOf { position in line.time.toLong()..<lineEndTime }
     }
-    val unhighlightedColor = LocalContentColor.current.copy(alpha = 0.45f)
+    val unhighlightedColor = LocalContentColor.current.copy(alpha = 0.70f)
     val lineColor by animateColorAsState(
         targetValue = if (isCurrentLine) accentColor else unhighlightedColor,
         animationSpec = if (useAnimatedLyrics) spring(
@@ -1512,8 +1512,8 @@ fun LyricLineRow(
     // Fisheye scaling + alpha + blur based on distance from current line
     val targetScale = when (distanceFromCurrent) {
         0 -> if (immersiveMode) 1.05f else 1.12f
-        1 -> 0.95f
-        else -> 0.86f
+        1 -> 0.96f
+        else -> 0.90f
     }
     val targetPadding = when (distanceFromCurrent) {
         0 -> 24.dp
@@ -1522,8 +1522,8 @@ fun LyricLineRow(
     }
     val targetAlpha = when (distanceFromCurrent) {
         0 -> 1.0f
-        1 -> 0.55f
-        else -> 0.38f
+        1 -> 0.75f
+        else -> 0.65f
     }
 
     val scale by animateFloatAsState(
@@ -1551,9 +1551,9 @@ fun LyricLineRow(
         label = "lineAlpha"
     )
 
-    // Blur Effect for non-active lines (Image 3)
+    // Blur Effect for non-active lines (Subtle depth)
     val targetBlur = if (animatedLyricsBlurEnabled && distanceFromCurrent > 0) {
-        (distanceFromCurrent * 2.5f).coerceIn(2.5f, 7f).dp
+        (distanceFromCurrent * 1.2f).coerceIn(1.2f, 3.5f).dp
     } else 0.dp
 
     val blurRadius by animateDpAsState(
